@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  backend:
+    container_name: backend
+    env_file:
+      - ./Backend/app/.env
+    build: ./Backend
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - ${FASTAPI_PORT:-8000}:${FASTAPI_PORT:-8000}
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    links:
+      - db
+    networks:
+      - quiz
+    expose:
+      - 8000
+  db:
+    container_name: ${DB_HOST:-db}
+    image: postgres:15.2-alpine
+    restart: always
+    env_file:
+      - ./Backend/app/.env
+    environment:
+      POSTGRES_DB: ${DB_NAME:-postgres}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready --port=${DB_PORT:-5432} -U ${DB_USER:-postgres}" ]
+      interval: 5s
+      timeout: 1s
+      retries: 5
+    ports:
+      - ${DB_PORT:-5432}:${DB_PORT:-5432}
+    command: -p ${DB_PORT:-5432}
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+    networks:
+      - quiz
+
+networks:
+  quiz:
+    name: quiz
+    driver: bridge
+
+volumes:
+  postgres-db:
+    driver: local
+  cache:
+    driver: local
